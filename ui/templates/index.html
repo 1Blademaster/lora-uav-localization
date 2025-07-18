@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Ground Station UI</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      width: 100vw;
+      font-family: sans-serif;
+    }
+
+    /* Layout containers */
+    #main-container {
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    #left-panel {
+      width: 50%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #camera {
+      flex: 1;
+      background-color: black;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #camera video {
+      width: 100%;
+      height: auto;
+    }
+
+    #controls {
+      flex: 1;
+      background-color: #f4f4f4;
+      padding: 10px;
+      box-sizing: border-box;
+      overflow-y: auto;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    #map-container {
+      width: 50%;
+      height: 100%;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Loading screen */
+    #loading-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: #1a1a1a;
+      color: white;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      transition: opacity 0.5s ease;
+    }
+
+    #loading-screen.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .spinner {
+      border: 8px solid #f3f3f3;
+      border-top: 8px solid #3498db;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+      margin-top: 20px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Loading Screen -->
+  <div id="loading-screen">
+    <h1>Loading Ground Station Interface...</h1>
+    <div class="spinner"></div>
+  </div>
+
+  <!-- Main Layout -->
+  <div id="main-container">
+    <!-- Left Side: Camera and Buttons -->
+    <div id="left-panel">
+      <div id="camera">
+        <video id="video" autoplay></video>
+      </div>
+      <div id="controls">
+        <button onclick="addMarker()">Add Marker</button>
+        <button onclick="toggleMap()">Toggle Map</button>
+        <button onclick="alert('Another Button')">Example Action</button>
+      </div>
+    </div>
+
+    <!-- Right Side: Map -->
+    <div id="map-container">
+      <div id="map"></div>
+    </div>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <!-- Your custom JS -->
+  <script src="{{ url_for('static', filename='js/map.js') }}"></script>
+
+  <!-- Camera JS -->
+  <script>
+    const video = document.getElementById('video');
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then((stream) => {
+        video.srcObject = stream;
+      })
+      .catch((err) => {
+        console.error("Camera error:", err);
+        video.parentElement.innerHTML = "<p style='color:white;'>Camera not found or permission denied</p>";
+      });
+  </script>
+
+  <!-- Hide Loading Screen -->
+  <script>
+    window.addEventListener('load', () => {
+      const loadingScreen = document.getElementById('loading-screen');
+      loadingScreen.classList.add('hidden');
+      setTimeout(() => loadingScreen.remove(), 600);
+    });
+  </script>
+
+</body>
+</html>
