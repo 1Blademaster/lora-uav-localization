@@ -57,6 +57,28 @@ freq_bytes = [(rf_freq >> 24) & 0xFF, (rf_freq >> 16) & 0xFF, (rf_freq >> 8) & 0
 send_command(0x86, freq_bytes)  # 0x86 = SetRfFrequency
 print('Set frequency')
 
+# === KEY FIX: MODEM PARAMS ===
+# Spreading Factor = SF7 → 0x06
+# BW = 812kHz → 0x06
+# CR = 4/5 → 0x01
+send_command(0x8B, [0x06, 0x06, 0x01])  # SetModulationParams
+print('Set modulation parameters')
+
+# === KEY FIX: PACKET PARAMS ===
+# Preamble = 12 symbols
+# Header = explicit
+# Payload length = 20 bytes max
+# CRC on
+# Standard IQ
+send_command(0x8C, [
+    0x00, 0x0C,  # preamble length MSB, LSB
+    0x00,        # implicit(1)/explicit(0)
+    0x14,        # payload length
+    0x01,        # CRC on
+    0x00         # Standard IQ
+])
+print('Set packet parameters')
+
 # Write message into buffer
 send_command(0x0E, [0x00] + list(b'HELLO'))  # 0x0E = WriteBuffer
 
