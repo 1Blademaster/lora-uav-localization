@@ -5,8 +5,8 @@ import time
 # Pins
 NSS = 8
 NRESET = 17
-BUSY = 27
-DIO1 = 22
+BUSY = 22
+DIO1 = 27
 
 SET_STANDBY = 0x80
 SET_PACKET_TYPE = 0x8A

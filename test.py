@@ -5,7 +5,7 @@ import time
 # Pins
 NSS = 8
 NRESET = 17
-BUSY = 27
+BUSY = 22
 
 # SX1280 opcodes
 SET_STANDBY = 0x80
