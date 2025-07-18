@@ -2,87 +2,105 @@ import spidev
 import RPi.GPIO as GPIO
 import time
 
-# Example GPIO pins
-NSS_PIN = 8      # CE0
-RESET_PIN = 17   # Or any GPIO
-BUSY_PIN = 22    # Any GPIO
-DIO1_PIN = 27    # Any GPIO
+# Pins
+NSS = 8
+NRESET = 17
+BUSY = 22
 
-# SPI init
+# SX1280 opcodes
+SET_STANDBY = 0x80
+SET_PACKET_TYPE = 0x8A
+SET_RF_FREQUENCY = 0x86
+SET_MOD_PARAMS = 0x8B
+SET_PKT_PARAMS = 0x8C
+WRITE_BUFFER = 0x0E
+SET_TX = 0x83
+
+PACKET_TYPE_LORA = 0x01
+STDBY_RC = 0x00
+
+FREQ_HZ = 2445000000
+FREQ_STEP = 198.364
+
 spi = spidev.SpiDev()
-spi.open(0, 0)  # SPI0, CS0
-spi.max_speed_hz = 1000000  # Start slow, up to 18 MHz is supported
+spi.open(0, 0)
+spi.max_speed_hz = 1000000
+spi.mode = 0
 
-# GPIO init
 GPIO.setmode(GPIO.BCM)
-GPIO.setup(RESET_PIN, GPIO.OUT)
-GPIO.setup(BUSY_PIN, GPIO.IN)
-GPIO.setup(DIO1_PIN, GPIO.IN)
-GPIO.setup(NSS_PIN, GPIO.OUT)
+GPIO.setup(NSS, GPIO.OUT)
+GPIO.setup(NRESET, GPIO.OUT)
+GPIO.setup(BUSY, GPIO.IN)
 
-# Reset the radio
-GPIO.output(RESET_PIN, GPIO.LOW)
-time.sleep(0.01)
-GPIO.output(RESET_PIN, GPIO.HIGH)
-time.sleep(0.01)
+def NSS_LOW(): GPIO.output(NSS, GPIO.LOW)
+def NSS_HIGH(): GPIO.output(NSS, GPIO.HIGH)
 
-def busy_wait():
-    while GPIO.input(BUSY_PIN) == GPIO.HIGH:
+def checkBusy():
+    while GPIO.input(BUSY) == GPIO.HIGH:
         time.sleep(0.001)
 
-# Send command helper
-def send_command(opcode, data=[]):
-    busy_wait()
-    GPIO.output(NSS_PIN, GPIO.LOW)
-    # spi.xfer2([opcode] + data)
-    spi.writebytes([opcode])
-    spi.writebytes(data)
-    GPIO.output(NSS_PIN, GPIO.HIGH)
-    busy_wait()
+def sendCommand(opcode, data=[]):
+    checkBusy()
+    NSS_LOW()
+    spi.xfer2([opcode] + data)
+    NSS_HIGH()
+    checkBusy()
 
-# Example: Set to Standby mode
-STDBY_RC = 0x00
-send_command(0x80, [STDBY_RC])  # 0x80 = SetStandby
-print('Send standby command')
+def resetDevice():
+    print("Reset...")
+    GPIO.output(NRESET, GPIO.LOW)
+    time.sleep(0.002)
+    GPIO.output(NRESET, GPIO.HIGH)
+    time.sleep(0.025)
+    checkBusy()
 
-# Example: Set packet type to LoRa
-PACKET_TYPE_LORA = 0x01
-send_command(0x8A, [PACKET_TYPE_LORA])  # 0x8A = SetPacketType
-print('Set packet type')
+def setStandby():
+    sendCommand(SET_STANDBY, [STDBY_RC])
 
-# Example: Set RF frequency to 2.4GHz (in Hz, value is Freq * 2^25 / 32e6)
-# For 2.45GHz: reg_value = int(2.45e9 * (2**25) / 32e6)
-rf_freq = int(2.45e9 * (2**25) / 32e6)
-freq_bytes = [(rf_freq >> 24) & 0xFF, (rf_freq >> 16) & 0xFF, (rf_freq >> 8) & 0xFF, rf_freq & 0xFF]
-send_command(0x86, freq_bytes)  # 0x86 = SetRfFrequency
-print('Set frequency')
+def setPacketType():
+    sendCommand(SET_PACKET_TYPE, [PACKET_TYPE_LORA])
 
-# === KEY FIX: MODEM PARAMS ===
-# Spreading Factor = SF7 → 0x06
-# BW = 812kHz → 0x06
-# CR = 4/5 → 0x01
-send_command(0x8B, [0x06, 0x06, 0x01])  # SetModulationParams
-print('Set modulation parameters')
+def setRfFrequency(freq_hz):
+    freq_temp = int(freq_hz / FREQ_STEP)
+    data = [
+        (freq_temp >> 24) & 0xFF,
+        (freq_temp >> 16) & 0xFF,
+        (freq_temp >> 8) & 0xFF,
+        freq_temp & 0xFF
+    ]
+    sendCommand(SET_RF_FREQUENCY, data)
 
-# === KEY FIX: PACKET PARAMS ===
-# Preamble = 12 symbols
-# Header = explicit
-# Payload length = 20 bytes max
-# CRC on
-# Standard IQ
-send_command(0x8C, [
-    0x00, 0x0C,  # preamble length MSB, LSB
-    0x00,        # implicit(1)/explicit(0)
-    0x14,        # payload length
-    0x01,        # CRC on
-    0x00         # Standard IQ
-])
-print('Set packet parameters')
+def setModulationParams():
+    SF7 = 0x06
+    BW_812KHZ = 0x06
+    CR_4_5 = 0x01
+    sendCommand(SET_MOD_PARAMS, [SF7, BW_812KHZ, CR_4_5])
 
-# Write message into buffer
-send_command(0x0E, [0x00] + list(b'HELLO'))  # 0x0E = WriteBuffer
+def setPacketParams():
+    preambleLen = [0x00, 0x0C]  # 12 symbols
+    header = 0x00  # Explicit
+    payloadLen = 5  # "HELLO"
+    crcOn = 0x01
+    iq = 0x00
+    sendCommand(SET_PKT_PARAMS, preambleLen + [header, payloadLen, crcOn, iq])
 
-# Transmit buffer (0x83 = SetTx, with timeout)
-send_command(0x83, [0x00, 0x00, 0x00])  # PeriodBase, PeriodBaseCount
+def writePayload(data):
+    payload = [0x00] + [ord(x) for x in data]
+    sendCommand(WRITE_BUFFER, payload)
 
-print("Message sent!")
+def tx():
+    sendCommand(SET_TX, [0x00, 0x00, 0x00])  # no timeout
+
+resetDevice()
+setStandby()
+setPacketType()
+setRfFrequency(FREQ_HZ)
+setModulationParams()
+setPacketParams()
+
+print("Transmitting 'HELLO' every 5 seconds...")
+while True:
+    writePayload("HELLO")
+    tx()
+    print("Sent!")
+    time.sleep(1)
