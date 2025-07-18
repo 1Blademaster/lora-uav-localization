@@ -44,11 +44,11 @@ def init():
 
     # setup the LoRa configuration
     lora.setupLoRa(freq, offset, spreading_factor, bandwidth, code_rate)
-    lora.setBufferBaseAddress(0, 1)
+    # lora.setBufferBaseAddress(0, 1)
 
     # debug configuration values
-    lora.printModemSettings()
-    lora.printOperatingSettings()
+    # lora.printModemSettings()
+    # lora.printOperatingSettings()
     # lora.printRegisters(0x900, 0x9FF)
 
     logger.info("~~~ LoRa SX1280 Transmitter is Ready ~~~")
@@ -66,7 +66,7 @@ def loop():
 
     startMs = time.time()
 
-    txPacketL = lora.transmit(buff, 10000, txPower, const.NO_WAIT)
+    txPacketL = lora.transmit(buff, 10000, txPower, const.WAIT_TX)
 
     if txPacketL > 0:
         endMs = time.time()

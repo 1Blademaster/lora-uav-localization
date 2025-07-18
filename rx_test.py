@@ -37,11 +37,11 @@ def init():
     # setup the LoRa configuration
     lora.setupLoRa(freq, offset, spreading_factor, bandwidth, code_rate)
     logger.info("init lora half done")
-    lora.setBufferBaseAddress(1, 0)
+    # lora.setBufferBaseAddress(1, 0)
     logger.info("init lora done")
     # debug configuration values
-    lora.printModemSettings()
-    lora.printOperatingSettings()
+    # lora.printModemSettings()
+    # lora.printOperatingSettings()
 
     logger.info("~~~ LoRa SX1280 Receiver is Ready ~~~")
     
